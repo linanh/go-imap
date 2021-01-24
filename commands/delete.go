@@ -3,8 +3,8 @@ package commands
 import (
 	"errors"
 
-	"github.com/emersion/go-imap"
-	"github.com/emersion/go-imap/utf7"
+	"github.com/linanh/go-imap"
+	"github.com/linanh/go-imap/utf7"
 )
 
 // Delete is a DELETE command, as defined in RFC 3501 section 6.3.3.

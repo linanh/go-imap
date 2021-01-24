@@ -3,7 +3,7 @@ package responses
 import (
 	"encoding/base64"
 
-	"github.com/emersion/go-imap"
+	"github.com/linanh/go-imap"
 	"github.com/emersion/go-sasl"
 )
 

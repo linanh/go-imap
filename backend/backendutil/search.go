@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emersion/go-imap"
+	"github.com/linanh/go-imap"
 	"github.com/emersion/go-message"
 	"github.com/emersion/go-message/mail"
 	"github.com/emersion/go-message/textproto"

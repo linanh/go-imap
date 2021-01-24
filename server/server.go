@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/emersion/go-imap"
-	"github.com/emersion/go-imap/backend"
-	"github.com/emersion/go-imap/responses"
+	"github.com/linanh/go-imap"
+	"github.com/linanh/go-imap/backend"
+	"github.com/linanh/go-imap/responses"
 	"github.com/emersion/go-sasl"
 )
 

@@ -4,7 +4,7 @@ import (
 	"net/mail"
 	"strings"
 
-	"github.com/emersion/go-imap"
+	"github.com/linanh/go-imap"
 	"github.com/emersion/go-message/textproto"
 )
 

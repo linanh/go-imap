@@ -1,7 +1,7 @@
 package responses
 
 import (
-	"github.com/emersion/go-imap"
+	"github.com/linanh/go-imap"
 )
 
 // A CAPABILITY response.
