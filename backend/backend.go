@@ -3,8 +3,6 @@ package backend
 
 import (
 	"errors"
-
-	"github.com/linanh/go-imap"
 )
 
 // ErrInvalidCredentials is returned by Backend.Login when a username or a
@@ -16,5 +14,5 @@ var ErrInvalidCredentials = errors.New("Invalid credentials")
 type Backend interface {
 	// Login authenticates a user. If the username or the password is incorrect,
 	// it returns ErrInvalidCredentials.
-	Login(connInfo *imap.Conn, username, password string) (User, error)
+	Login(serverConn interface{}, username, password string) (User, error)
 }
