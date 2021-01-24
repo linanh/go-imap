@@ -16,5 +16,5 @@ var ErrInvalidCredentials = errors.New("Invalid credentials")
 type Backend interface {
 	// Login authenticates a user. If the username or the password is incorrect,
 	// it returns ErrInvalidCredentials.
-	Login(connInfo *imap.ConnInfo, username, password string) (User, error)
+	Login(connInfo *imap.Conn, username, password string) (User, error)
 }
