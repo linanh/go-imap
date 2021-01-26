@@ -107,6 +107,8 @@ type Server struct {
 	AutoLogout time.Duration
 	// Allow authentication over unencrypted connections.
 	AllowInsecureAuth bool
+	// From secure network over unencrypted connections is secure.
+	SecureNet []*net.IPNet
 	// An io.Writer to which all network activity will be mirrored.
 	Debug io.Writer
 	// ErrorLog specifies an optional logger for errors accepting

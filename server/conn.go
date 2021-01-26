@@ -257,7 +257,20 @@ func (c *conn) TLSState() *tls.ConnectionState {
 
 // canAuth checks if the client can use plain text authentication.
 func (c *conn) canAuth() bool {
-	return c.IsTLS() || c.s.AllowInsecureAuth
+	canAuthResult := c.IsTLS() || c.s.AllowInsecureAuth
+	
+	//check secure network
+	if canAuthResult == false {
+		remoteIpStr, _, _ := net.SplitHostPort(c.Info().RemoteAddr.String())
+		remoteIp := net.ParseIP(remoteIpStr)	
+		for _, ipNet := range c.s.SecureNet {
+			if ipNet.Contains(remoteIp) {
+				return true
+			}
+		}
+	}
+
+	return canAuthResult
 }
 
 func (c *conn) silent() *bool {

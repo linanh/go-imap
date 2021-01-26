@@ -95,7 +95,7 @@ func (cmd *Login) Handle(conn Conn) error {
 		return ErrAuthDisabled
 	}
 
-	user, err := conn.Server().Backend.Login(conn.Info(), cmd.Username, cmd.Password)
+	user, err := conn.Server().Backend.Login(conn, cmd.Username, cmd.Password)
 	if err != nil {
 		return err
 	}
