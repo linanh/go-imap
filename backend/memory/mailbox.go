@@ -241,3 +241,11 @@ func (mbox *Mailbox) Expunge() error {
 
 	return nil
 }
+
+func (mbox *Mailbox) Select() error {
+	return nil
+}
+
+func (mbox *Mailbox) DeSelect() error {
+	return nil
+}

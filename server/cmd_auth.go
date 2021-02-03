@@ -21,6 +21,9 @@ type Select struct {
 func (cmd *Select) Handle(conn Conn) error {
 	ctx := conn.Context()
 
+	if ctx.Mailbox != nil {
+		ctx.Mailbox.DeSelect()
+	}
 	// As per RFC1730#6.3.1,
 	// 		The SELECT command automatically deselects any
 	// 		currently selected mailbox before attempting the new selection.
@@ -35,6 +38,11 @@ func (cmd *Select) Handle(conn Conn) error {
 		return ErrNotAuthenticated
 	}
 	mbox, err := ctx.User.GetMailbox(cmd.Mailbox)
+	if err != nil {
+		return err
+	}
+
+	err = mbox.Select()
 	if err != nil {
 		return err
 	}

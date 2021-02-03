@@ -75,4 +75,10 @@ type Mailbox interface {
 	// If the Backend implements Updater, it must notify the client immediately
 	// via an expunge update.
 	Expunge() error
+
+	//Select mailbox
+	Select() error
+	
+	//Deselect mailbox
+	DeSelect() error
 }
