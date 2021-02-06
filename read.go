@@ -6,6 +6,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"github.com/linanh/multibuf"
 )
 
 const (
@@ -260,12 +261,8 @@ func (r *Reader) ReadLiteral() (Literal, error) {
 		r.continues <- true
 	}
 
-	// Read literal
-	b := make([]byte, n)
-	if _, err := io.ReadFull(r, b); err != nil {
-		return nil, err
-	}
-	return bytes.NewBuffer(b), nil
+	// Use mutibuf. Need close reader.
+	return multibuf.New(r)
 }
 
 func (r *Reader) ReadQuotedString() (string, error) {
