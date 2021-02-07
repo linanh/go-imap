@@ -6,7 +6,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"github.com/linanh/multibuf"
 )
 
 const (
@@ -262,7 +261,7 @@ func (r *Reader) ReadLiteral() (Literal, error) {
 	}
 
 	// Use mutibuf. Need close reader.
-	return multibuf.New(r)
+	return NewCombinedBuf(r, int64(n))
 }
 
 func (r *Reader) ReadQuotedString() (string, error) {
