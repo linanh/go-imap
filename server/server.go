@@ -109,6 +109,8 @@ type Server struct {
 	AllowInsecureAuth bool
 	// From secure network over unencrypted connections is secure.
 	SecureNet []*net.IPNet
+	// Print network error 
+	LogPrintNetConnErr bool
 	// An io.Writer to which all network activity will be mirrored.
 	Debug io.Writer
 	// ErrorLog specifies an optional logger for errors accepting

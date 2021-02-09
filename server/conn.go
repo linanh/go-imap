@@ -204,14 +204,14 @@ func (c *conn) send() {
 			// Send continuation requests
 			if needCont {
 				resp := &imap.ContinuationReq{Info: "send literal"}
-				if err := c.writeAndFlush(resp); err != nil {
+				if err := c.writeAndFlush(resp); err != nil && c.s.LogPrintNetConnErr {
 					c.Server().ErrorLog.Println("cannot send continuation request: ", err)
 				}
 			}
 		case res := <-c.responses:
 			// Got a response that needs to be sent
 			// Request to send the response
-			if err := c.writeAndFlush(res); err != nil {
+			if err := c.writeAndFlush(res); err != nil && c.s.LogPrintNetConnErr {
 				c.Server().ErrorLog.Println("cannot send response: ", err)
 			}
 		case <-c.loggedOut:
@@ -325,7 +325,9 @@ func (c *conn) serve(conn Conn) (err error) {
 					Info: err.Error(),
 				}
 			} else {
-				c.s.ErrorLog.Println("cannot read command:", err)
+				if c.s.LogPrintNetConnErr {
+					c.s.ErrorLog.Println("cannot read command:", err)
+				}
 				return err
 			}
 		} else {
@@ -352,7 +354,9 @@ func (c *conn) serve(conn Conn) (err error) {
 		if res != nil {
 
 			if err := c.WriteResp(res); err != nil {
-				c.s.ErrorLog.Println("cannot write response:", err)
+				if c.s.LogPrintNetConnErr {
+					c.s.ErrorLog.Println("cannot write response:", err)
+				}
 				continue
 			}
 
