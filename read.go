@@ -260,6 +260,12 @@ func (r *Reader) ReadLiteral() (Literal, error) {
 		r.continues <- true
 	}
 
+	// Small data <=1 MB
+	if n <= 1048576 {
+		p := make([]byte, n)
+		r.Read(p)
+		return bytes.NewReader(p), nil
+	}
 	// Use mutibuf. Need close reader.
 	return NewCombinedBuf(r, int64(n))
 }
