@@ -262,8 +262,10 @@ func (r *Reader) ReadLiteral() (Literal, error) {
 
 	// Small data <=1 MB
 	if n <= 1048576 {
-		p := make([]byte, n)
-		r.Read(p)
+		b := make([]byte, n)
+		if _, err := io.ReadFull(r, b); err != nil {
+			return nil, err
+		}
 		return bytes.NewReader(p), nil
 	}
 	// Use mutibuf. Need close reader.
