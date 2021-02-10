@@ -266,7 +266,7 @@ func (r *Reader) ReadLiteral() (Literal, error) {
 		if _, err := io.ReadFull(r, b); err != nil {
 			return nil, err
 		}
-		return bytes.NewReader(p), nil
+		return bytes.NewReader(b), nil
 	}
 	// Use mutibuf. Need close reader.
 	return NewCombinedBuf(r, int64(n))
