@@ -4,6 +4,7 @@ package server
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -11,10 +12,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/emersion/go-sasl"
 	"github.com/linanh/go-imap"
 	"github.com/linanh/go-imap/backend"
 	"github.com/linanh/go-imap/responses"
-	"github.com/emersion/go-sasl"
+	"github.com/throttled/throttled/v2"
 )
 
 // The minimum autologout duration defined in RFC 3501 section 5.4.
@@ -109,7 +111,7 @@ type Server struct {
 	AllowInsecureAuth bool
 	// From secure network over unencrypted connections is secure.
 	SecureNet []*net.IPNet
-	// Print network error 
+	// Print network error
 	LogPrintNetConnErr bool
 	// An io.Writer to which all network activity will be mirrored.
 	Debug io.Writer
@@ -121,6 +123,8 @@ type Server struct {
 	// The maximum literal size, in bytes. Literals exceeding this size will be
 	// rejected. A value of zero disables the limit (this is the default).
 	MaxLiteralSize uint32
+	//Rate Limiter
+	RateLimiter throttled.RateLimiter
 }
 
 // Create a new IMAP server from an existing listener.
@@ -267,6 +271,23 @@ func (s *Server) ListenAndServeTLS() error {
 }
 
 func (s *Server) serveConn(conn Conn) error {
+	//Check rate limit
+	if s.RateLimiter != nil {
+		remoteIPStr, _, _ := net.SplitHostPort(conn.Info().RemoteAddr().String())
+		limited, result, _ := s.RateLimiter.RateLimit(remoteIPStr, 1)
+		//exceeds the rate limit
+		if limited {
+			msg := fmt.Sprintf("Too many IMAP sessions for this host, please retry after %d seconds", result.RetryAfter/time.Second)
+			s.ErrorLog.Printf("the connections of ip %s exceeds the rate limit %d", remoteIPStr, result.Limit)
+			conn.WriteResp(&imap.StatusResp{
+				Type: imap.StatusRespBye,
+				Info: msg,
+			})
+			conn.Close()
+			return nil
+		}
+	}
+
 	s.locker.Lock()
 	s.conns[conn] = struct{}{}
 	s.locker.Unlock()
