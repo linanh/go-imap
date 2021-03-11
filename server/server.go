@@ -273,7 +273,7 @@ func (s *Server) ListenAndServeTLS() error {
 func (s *Server) serveConn(conn Conn) error {
 	//Check rate limit
 	if s.RateLimiter != nil {
-		remoteIPStr, _, _ := net.SplitHostPort(conn.Info().RemoteAddr().String())
+		remoteIPStr, _, _ := net.SplitHostPort(conn.Info().RemoteAddr.String())
 		limited, result, _ := s.RateLimiter.RateLimit(remoteIPStr, 1)
 		//exceeds the rate limit
 		if limited {
