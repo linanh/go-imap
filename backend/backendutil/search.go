@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/mail"
 	"strings"
 	"time"
 
 	"github.com/linanh/go-imap"
-	"github.com/emersion/go-message"
-	"github.com/emersion/go-message/mail"
-	"github.com/emersion/go-message/textproto"
+	"github.com/linanh/go-message
+	"github.com/linanh/go-messageextproto"
 )
 
 func matchString(s, substr string) bool {

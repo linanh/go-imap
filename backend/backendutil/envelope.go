@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/linanh/go-imap"
-	"github.com/emersion/go-message/textproto"
+	"github.com/linanh/go-message/textproto"
 )
 
 func headerAddressList(value string) ([]*imap.Address, error) {

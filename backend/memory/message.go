@@ -8,8 +8,8 @@ import (
 
 	"github.com/linanh/go-imap"
 	"github.com/linanh/go-imap/backend/backendutil"
-	"github.com/emersion/go-message"
-	"github.com/emersion/go-message/textproto"
+	"github.com/linanh/go-message"
+	"github.com/linanh/go-message/textproto"
 )
 
 type Message struct {

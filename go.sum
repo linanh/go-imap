@@ -27,6 +27,9 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/linanh/go-imap v1.0.7-0.20210124152519-ef1e9d726c02/go.mod h1:+33wjrK3hEBVwOABq2wu/ww6BkPpYa/7olyy/z57smg=
+github.com/linanh/go-imap v1.0.7-RC3/go.mod h1:5ipfLgsTT4fIZXjJUIuBeolt0Ymk/5++TBnhynyvtl0=
+github.com/linanh/go-message v0.14.2-0.20210509114702-93ea448ff67a h1:D1vT9gWBCSiOk20iZb6WCUX3HxXp+fPS5d/sn2E2g74=
+github.com/linanh/go-message v0.14.2-0.20210509114702-93ea448ff67a/go.mod h1:d7qW0/gNaN88dQ5ohclcM8qby4EyUvrNC4tMFyRAmYk=
 github.com/linanh/multibuf v0.0.1 h1:uGt2VOR7oCwRkimw35AelRv4cuT3jWiCGNpwxI9yAhA=
 github.com/linanh/multibuf v0.0.1/go.mod h1:MnTnKx+KCVxEacONBBtz686eIQpoGTwsvksWXSdnWIA=
 github.com/martinlindhe/base36 v1.1.0 h1:cIwvvwYse/0+1CkUPYH5ZvVIYG3JrILmQEIbLuar02Y=
