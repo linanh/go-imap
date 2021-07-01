@@ -89,4 +89,7 @@ type User interface {
 	// Logout is called when this User will no longer be used, likely because the
 	// client closed the connection.
 	Logout() error
+
+	//After login, SetExtensionID is called when user send command ID
+	SetExtensionID(map[string]string) error
 }
