@@ -77,6 +77,10 @@ func (u *User) RenameMailbox(existingName, newName string) error {
 	return nil
 }
 
+func (u *User) SetExtensionID(map[string]string) error {
+	return nil
+}
+
 func (u *User) Logout() error {
 	return nil
 }

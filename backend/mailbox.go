@@ -13,13 +13,13 @@ type Mailbox interface {
 	Name() string
 
 	// Info returns this mailbox info.
-	Info() (*imap.MailboxInfo, error)
+	Info(opts []ExtensionOption) (*imap.MailboxInfo, []ExtensionResult, error)
 
 	// Status returns this mailbox status. The fields Name, Flags, PermanentFlags
 	// and UnseenSeqNum in the returned MailboxStatus must be always populated.
 	// This function does not affect the state of any messages in the mailbox. See
 	// RFC 3501 section 6.3.10 for a list of items that can be requested.
-	Status(items []imap.StatusItem) (*imap.MailboxStatus, error)
+	Status(items []imap.StatusItem, opts []ExtensionOption) (*imap.MailboxStatus, []ExtensionResult, error)
 
 	// SetSubscribed adds or removes the mailbox to the server's set of "active"
 	// or "subscribed" mailboxes.
@@ -38,11 +38,11 @@ type Mailbox interface {
 	// 3501 section 6.4.5 for a list of items that can be requested.
 	//
 	// Messages must be sent to ch. When the function returns, ch must be closed.
-	ListMessages(uid bool, seqset *imap.SeqSet, items []imap.FetchItem, ch chan<- *imap.Message) error
+	ListMessages(uid bool, seqset *imap.SeqSet, items []imap.FetchItem, ch chan<- *imap.Message, opts []ExtensionOption) ([]ExtensionResult, error)
 
 	// SearchMessages searches messages. The returned list must contain UIDs if
 	// uid is set to true, or sequence numbers otherwise.
-	SearchMessages(uid bool, criteria *imap.SearchCriteria) ([]uint32, error)
+	SearchMessages(uid bool, criteria *imap.SearchCriteria, opts []ExtensionOption) ([]uint32, []ExtensionResult, error)
 
 	// CreateMessage appends a new message to this mailbox. The \Recent flag will
 	// be added no matter flags is empty or not. If date is nil, the current time
@@ -50,13 +50,13 @@ type Mailbox interface {
 	//
 	// If the Backend implements Updater, it must notify the client immediately
 	// via a mailbox update.
-	CreateMessage(flags []string, date time.Time, body imap.Literal) error
+	CreateMessage(flags []string, date time.Time, body imap.Literal, opts []ExtensionOption) ([]ExtensionResult, error)
 
 	// UpdateMessagesFlags alters flags for the specified message(s).
 	//
 	// If the Backend implements Updater, it must notify the client immediately
 	// via a message update.
-	UpdateMessagesFlags(uid bool, seqset *imap.SeqSet, operation imap.FlagsOp, flags []string) error
+	UpdateMessagesFlags(uid bool, seqset *imap.SeqSet, operation imap.FlagsOp, flags []string, opts []ExtensionOption) ([]ExtensionResult, error)
 
 	// CopyMessages copies the specified message(s) to the end of the specified
 	// destination mailbox. The flags and internal date of the message(s) SHOULD
@@ -67,18 +67,18 @@ type Mailbox interface {
 	//
 	// If the Backend implements Updater, it must notify the client immediately
 	// via a mailbox update.
-	CopyMessages(uid bool, seqset *imap.SeqSet, dest string) error
+	CopyMessages(uid bool, seqset *imap.SeqSet, dest string, opts []ExtensionOption) ([]ExtensionResult, error)
 
 	// Expunge permanently removes all messages that have the \Deleted flag set
 	// from the currently selected mailbox.
 	//
 	// If the Backend implements Updater, it must notify the client immediately
 	// via an expunge update.
-	Expunge() error
+	Expunge(opts []ExtensionOption) ([]ExtensionResult, error)
 
 	//Select mailbox
-	Select() error
-	
+	Select(opts []ExtensionOption) ([]ExtensionResult, error)
+
 	//Deselect mailbox
 	DeSelect() error
 }

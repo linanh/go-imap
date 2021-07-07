@@ -123,6 +123,7 @@ type Server struct {
 	// The maximum literal size, in bytes. Literals exceeding this size will be
 	// rejected. A value of zero disables the limit (this is the default).
 	MaxLiteralSize uint32
+	backendExts    map[string]struct{}
 	//Rate Limiter
 	RateLimiter throttled.RateLimiter
 }
@@ -130,10 +131,15 @@ type Server struct {
 // Create a new IMAP server from an existing listener.
 func New(bkd backend.Backend) *Server {
 	s := &Server{
-		listeners: make(map[net.Listener]struct{}),
-		conns:     make(map[Conn]struct{}),
-		Backend:   bkd,
-		ErrorLog:  log.New(os.Stderr, "imap/server: ", log.LstdFlags),
+		listeners:   make(map[net.Listener]struct{}),
+		conns:       make(map[Conn]struct{}),
+		backendExts: map[string]struct{}{},
+		Backend:     bkd,
+		ErrorLog:    log.New(os.Stderr, "imap/server: ", log.LstdFlags),
+	}
+
+	for _, ext := range bkd.SupportedExtensions() {
+		s.backendExts[ext] = struct{}{}
 	}
 
 	s.auths = map[string]SASLServerFactory{

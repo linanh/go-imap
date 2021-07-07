@@ -42,7 +42,7 @@ func (cmd *Select) Handle(conn Conn) error {
 		return err
 	}
 
-	err = mbox.Select()
+	_, err = mbox.Select(nil)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (cmd *Select) Handle(conn Conn) error {
 		imap.StatusUidNext, imap.StatusUidValidity,
 	}
 
-	status, err := mbox.Status(items)
+	status, _, err := mbox.Status(items, nil)
 	if err != nil {
 		return err
 	}
@@ -179,7 +179,7 @@ func (cmd *List) Handle(conn Conn) error {
 	}
 
 	for _, mbox := range mailboxes {
-		info, err := mbox.Info()
+		info, _, err := mbox.Info(nil)
 		if err != nil {
 			// Close channel to signal end of results
 			close(ch)
@@ -223,7 +223,7 @@ func (cmd *Status) Handle(conn Conn) error {
 		return err
 	}
 
-	status, err := mbox.Status(cmd.Items)
+	status, _, err := mbox.Status(cmd.Items, nil)
 	if err != nil {
 		return err
 	}
@@ -260,14 +260,15 @@ func (cmd *Append) Handle(conn Conn) error {
 		return err
 	}
 
-	if err := mbox.CreateMessage(cmd.Flags, cmd.Date, cmd.Message); err != nil {
+	res, err := mbox.CreateMessage(cmd.Flags, cmd.Date, cmd.Message, nil)
+	if err != nil {
 		return err
 	}
 
 	// If APPEND targets the currently selected mailbox, send an untagged EXISTS
 	// Do this only if the backend doesn't send updates itself
 	if conn.Server().Updates == nil && ctx.Mailbox != nil && ctx.Mailbox.Name() == mbox.Name() {
-		status, err := mbox.Status([]imap.StatusItem{imap.StatusMessages})
+		status, _, err := mbox.Status([]imap.StatusItem{imap.StatusMessages}, nil)
 		if err != nil {
 			return err
 		}
@@ -279,6 +280,29 @@ func (cmd *Append) Handle(conn Conn) error {
 		if err := conn.WriteResp(res); err != nil {
 			return err
 		}
+	}
+
+	var customResp *imap.StatusResp
+	for _, value := range res {
+		switch value := value.(type) {
+		case backend.AppendUID:
+			customResp = &imap.StatusResp{
+				Tag:  "",
+				Type: imap.StatusRespOk,
+				Code: "APPENDUID",
+				Arguments: []interface{}{
+					value.UIDValidity,
+					value.UID,
+				},
+				Info: "APPEND completed",
+			}
+		default:
+			conn.Server().ErrorLog.Printf("ExtensionResult of unknown type returned by backend: %T", value)
+			// Returning an error here would make it look like the command failed.
+		}
+	}
+	if customResp != nil {
+		return &imap.ErrStatusResp{Resp: customResp}
 	}
 
 	return nil

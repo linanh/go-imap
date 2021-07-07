@@ -179,6 +179,13 @@ func (c *conn) Capabilities() []string {
 		}
 	}
 
+	for _, ext := range c.Server().Backend.SupportedExtensions() {
+		switch ext {
+		case "UIDPLUS":
+			caps = append(caps, "UIDPLUS")
+		}
+	}
+
 	for _, ext := range c.s.extensions {
 		caps = append(caps, ext.Capabilities(c)...)
 	}
@@ -258,11 +265,11 @@ func (c *conn) TLSState() *tls.ConnectionState {
 // canAuth checks if the client can use plain text authentication.
 func (c *conn) canAuth() bool {
 	canAuthResult := c.IsTLS() || c.s.AllowInsecureAuth
-	
+
 	//check secure network
 	if canAuthResult == false {
 		remoteIpStr, _, _ := net.SplitHostPort(c.Info().RemoteAddr.String())
-		remoteIp := net.ParseIP(remoteIpStr)	
+		remoteIp := net.ParseIP(remoteIpStr)
 		for _, ipNet := range c.s.SecureNet {
 			if ipNet.Contains(remoteIp) {
 				return true
