@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/linanh/go-imap"
+	"github.com/linanh/go-imap/backend"
 	"github.com/linanh/go-imap/commands"
 	"github.com/linanh/go-imap/responses"
 )
@@ -53,7 +54,8 @@ func (cmd *Close) Handle(conn Conn) error {
 	ctx.MailboxReadOnly = false
 
 	// No need to send expunge updates here, since the mailbox is already unselected
-	return mailbox.Expunge()
+	_, err := mailbox.Expunge(nil)
+	return err
 }
 
 type Expunge struct {
@@ -61,6 +63,10 @@ type Expunge struct {
 }
 
 func (cmd *Expunge) Handle(conn Conn) error {
+	if cmd.SeqSet != nil {
+		return errors.New("Unexpected argment")
+	}
+
 	ctx := conn.Context()
 	if ctx.Mailbox == nil {
 		return ErrNoMailboxSelected
@@ -69,6 +75,8 @@ func (cmd *Expunge) Handle(conn Conn) error {
 		return ErrMailboxReadOnly
 	}
 
+	var err error
+
 	// Get a list of messages that will be deleted
 	// That will allow us to send expunge updates if the backend doesn't support it
 	var seqnums []uint32
@@ -76,15 +84,14 @@ func (cmd *Expunge) Handle(conn Conn) error {
 		criteria := &imap.SearchCriteria{
 			WithFlags: []string{imap.DeletedFlag},
 		}
-
-		var err error
-		seqnums, err = ctx.Mailbox.SearchMessages(false, criteria)
+		seqnums, _, err = ctx.Mailbox.SearchMessages(false, criteria, nil)
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := ctx.Mailbox.Expunge(); err != nil {
+	_, err = ctx.Mailbox.Expunge(nil)
+	if err != nil {
 		return err
 	}
 
@@ -121,6 +128,28 @@ func (cmd *Expunge) Handle(conn Conn) error {
 	return nil
 }
 
+func (cmd *Expunge) UidHandle(conn Conn) error {
+	if _, ok := conn.Server().backendExts["UIDPLUS"]; !ok {
+		return errors.New("Unknown command")
+	}
+	if cmd.SeqSet == nil {
+		return errors.New("Missing set argment")
+	}
+
+	ctx := conn.Context()
+	if ctx.Mailbox == nil {
+		return ErrNoMailboxSelected
+	}
+	if ctx.MailboxReadOnly {
+		return ErrMailboxReadOnly
+	}
+
+	_, err := ctx.Mailbox.Expunge([]backend.ExtensionOption{
+		backend.ExpungeSeqSet{SeqSet: cmd.SeqSet},
+	})
+	return err
+}
+
 type Search struct {
 	commands.Search
 }
@@ -131,7 +160,7 @@ func (cmd *Search) handle(uid bool, conn Conn) error {
 		return ErrNoMailboxSelected
 	}
 
-	ids, err := ctx.Mailbox.SearchMessages(uid, cmd.Criteria)
+	ids, _, err := ctx.Mailbox.SearchMessages(uid, cmd.Criteria, nil)
 	if err != nil {
 		return err
 	}
@@ -169,7 +198,7 @@ func (cmd *Fetch) handle(uid bool, conn Conn) error {
 		}
 	})()
 
-	err := ctx.Mailbox.ListMessages(uid, cmd.SeqSet, cmd.Items, ch)
+	_, err := ctx.Mailbox.ListMessages(uid, cmd.SeqSet, cmd.Items, ch, nil)
 	if err != nil {
 		return err
 	}
@@ -241,7 +270,7 @@ func (cmd *Store) handle(uid bool, conn Conn) error {
 	// from receiving them
 	// TODO: find a better way to do this, without conn.silent
 	*conn.silent() = silent
-	err = ctx.Mailbox.UpdateMessagesFlags(uid, cmd.SeqSet, op, flags)
+	_, err = ctx.Mailbox.UpdateMessagesFlags(uid, cmd.SeqSet, op, flags, nil)
 	*conn.silent() = false
 	if err != nil {
 		return err
@@ -283,7 +312,42 @@ func (cmd *Copy) handle(uid bool, conn Conn) error {
 		return ErrNoMailboxSelected
 	}
 
-	return ctx.Mailbox.CopyMessages(uid, cmd.SeqSet, cmd.Mailbox)
+	resp, err := ctx.Mailbox.CopyMessages(uid, cmd.SeqSet, cmd.Mailbox, nil)
+	if err != nil {
+		if err == backend.ErrNoSuchMailbox {
+			return ErrStatusResp(&imap.StatusResp{
+				Type: imap.StatusRespNo,
+				Code: imap.CodeTryCreate,
+				Info: "No such mailbox",
+			})
+		}
+		return err
+	}
+
+	var customResp *imap.StatusResp
+	for _, value := range resp {
+		switch value := value.(type) {
+		case backend.CopyUIDs:
+			customResp = &imap.StatusResp{
+				Type: imap.StatusRespOk,
+				Code: "COPYUID",
+				Arguments: []interface{}{
+					value.UIDValidity,
+					value.Source,
+					value.Dest,
+				},
+				Info: "COPY completed",
+			}
+		default:
+			conn.Server().ErrorLog.Printf("ExtensionResult of unknown type returned by backend: %T", value)
+			// Returning an error here would make it look like the command failed.
+		}
+	}
+	if customResp != nil {
+		return &imap.ErrStatusResp{Resp: customResp}
+	}
+
+	return nil
 }
 
 func (cmd *Copy) Handle(conn Conn) error {

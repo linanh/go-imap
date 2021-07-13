@@ -21,6 +21,10 @@ func (be *Backend) Login(_ interface{}, username, password string) (backend.User
 	return nil, errors.New("Bad username or password")
 }
 
+func (be *Backend) SupportedExtensions() []string {
+	return nil
+}
+
 func New() *Backend {
 	user := &User{username: "username", password: "password"}
 

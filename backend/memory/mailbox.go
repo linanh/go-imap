@@ -23,12 +23,12 @@ func (mbox *Mailbox) Name() string {
 	return mbox.name
 }
 
-func (mbox *Mailbox) Info() (*imap.MailboxInfo, error) {
+func (mbox *Mailbox) Info(_ []backend.ExtensionOption) (*imap.MailboxInfo, []backend.ExtensionResult, error) {
 	info := &imap.MailboxInfo{
 		Delimiter: Delimiter,
 		Name:      mbox.name,
 	}
-	return info, nil
+	return info, nil, nil
 }
 
 func (mbox *Mailbox) uidNext() uint32 {
@@ -78,7 +78,7 @@ func (mbox *Mailbox) unseenSeqNum() uint32 {
 	return 0
 }
 
-func (mbox *Mailbox) Status(items []imap.StatusItem) (*imap.MailboxStatus, error) {
+func (mbox *Mailbox) Status(items []imap.StatusItem, _ []backend.ExtensionOption) (*imap.MailboxStatus, []backend.ExtensionResult, error) {
 	status := imap.NewMailboxStatus(mbox.name, items)
 	status.Flags = mbox.flags()
 	status.PermanentFlags = []string{"\\*"}
@@ -99,7 +99,7 @@ func (mbox *Mailbox) Status(items []imap.StatusItem) (*imap.MailboxStatus, error
 		}
 	}
 
-	return status, nil
+	return status, nil, nil
 }
 
 func (mbox *Mailbox) SetSubscribed(subscribed bool) error {
@@ -111,7 +111,7 @@ func (mbox *Mailbox) Check() error {
 	return nil
 }
 
-func (mbox *Mailbox) ListMessages(uid bool, seqSet *imap.SeqSet, items []imap.FetchItem, ch chan<- *imap.Message) error {
+func (mbox *Mailbox) ListMessages(uid bool, seqSet *imap.SeqSet, items []imap.FetchItem, ch chan<- *imap.Message, _ []backend.ExtensionOption) ([]backend.ExtensionResult, error) {
 	defer close(ch)
 
 	for i, msg := range mbox.Messages {
@@ -135,10 +135,10 @@ func (mbox *Mailbox) ListMessages(uid bool, seqSet *imap.SeqSet, items []imap.Fe
 		ch <- m
 	}
 
-	return nil
+	return nil, nil
 }
 
-func (mbox *Mailbox) SearchMessages(uid bool, criteria *imap.SearchCriteria) ([]uint32, error) {
+func (mbox *Mailbox) SearchMessages(uid bool, criteria *imap.SearchCriteria, _ []backend.ExtensionOption) ([]uint32, []backend.ExtensionResult, error) {
 	var ids []uint32
 	for i, msg := range mbox.Messages {
 		seqNum := uint32(i + 1)
@@ -156,17 +156,17 @@ func (mbox *Mailbox) SearchMessages(uid bool, criteria *imap.SearchCriteria) ([]
 		}
 		ids = append(ids, id)
 	}
-	return ids, nil
+	return ids, nil, nil
 }
 
-func (mbox *Mailbox) CreateMessage(flags []string, date time.Time, body imap.Literal) error {
+func (mbox *Mailbox) CreateMessage(flags []string, date time.Time, body imap.Literal, _ []backend.ExtensionOption) ([]backend.ExtensionResult, error) {
 	if date.IsZero() {
 		date = time.Now()
 	}
 
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	mbox.Messages = append(mbox.Messages, &Message{
@@ -176,10 +176,10 @@ func (mbox *Mailbox) CreateMessage(flags []string, date time.Time, body imap.Lit
 		Flags: flags,
 		Body:  b,
 	})
-	return nil
+	return nil, nil
 }
 
-func (mbox *Mailbox) UpdateMessagesFlags(uid bool, seqset *imap.SeqSet, op imap.FlagsOp, flags []string) error {
+func (mbox *Mailbox) UpdateMessagesFlags(uid bool, seqset *imap.SeqSet, op imap.FlagsOp, flags []string, _ []backend.ExtensionOption) ([]backend.ExtensionResult, error) {
 	for i, msg := range mbox.Messages {
 		var id uint32
 		if uid {
@@ -194,13 +194,13 @@ func (mbox *Mailbox) UpdateMessagesFlags(uid bool, seqset *imap.SeqSet, op imap.
 		msg.Flags = backendutil.UpdateFlags(msg.Flags, op, flags)
 	}
 
-	return nil
+	return nil, nil
 }
 
-func (mbox *Mailbox) CopyMessages(uid bool, seqset *imap.SeqSet, destName string) error {
+func (mbox *Mailbox) CopyMessages(uid bool, seqset *imap.SeqSet, destName string, _ []backend.ExtensionOption) ([]backend.ExtensionResult, error) {
 	dest, ok := mbox.user.mailboxes[destName]
 	if !ok {
-		return backend.ErrNoSuchMailbox
+		return nil, backend.ErrNoSuchMailbox
 	}
 
 	for i, msg := range mbox.Messages {
@@ -219,10 +219,10 @@ func (mbox *Mailbox) CopyMessages(uid bool, seqset *imap.SeqSet, destName string
 		dest.Messages = append(dest.Messages, &msgCopy)
 	}
 
-	return nil
+	return nil, nil
 }
 
-func (mbox *Mailbox) Expunge() error {
+func (mbox *Mailbox) Expunge(_ []backend.ExtensionOption) ([]backend.ExtensionResult, error) {
 	for i := len(mbox.Messages) - 1; i >= 0; i-- {
 		msg := mbox.Messages[i]
 
@@ -239,11 +239,11 @@ func (mbox *Mailbox) Expunge() error {
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
-func (mbox *Mailbox) Select() error {
-	return nil
+func (mbox *Mailbox) Select(_ []backend.ExtensionOption) ([]backend.ExtensionResult, error) {
+	return nil, nil
 }
 
 func (mbox *Mailbox) DeSelect() error {
