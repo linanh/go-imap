@@ -1,10 +1,11 @@
 package backendutil
 
 import (
-	"net/mail"
+	netmail "net/mail"
 	"strings"
 
 	"github.com/linanh/go-imap"
+	"github.com/linanh/go-message/mail"
 	"github.com/linanh/go-message/textproto"
 )
 
@@ -37,7 +38,7 @@ func headerAddressList(value string) ([]*imap.Address, error) {
 func FetchEnvelope(h textproto.Header) (*imap.Envelope, error) {
 	env := new(imap.Envelope)
 
-	env.Date, _ = mail.ParseDate(h.Get("Date"))
+	env.Date, _ = netmail.ParseDate(h.Get("Date"))
 	env.Subject = h.Get("Subject")
 	env.From, _ = headerAddressList(h.Get("From"))
 	env.Sender, _ = headerAddressList(h.Get("Sender"))
