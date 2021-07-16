@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/linanh/go-imap"
 	"github.com/linanh/go-imap/backend"
@@ -42,17 +43,41 @@ func (cmd *Select) Handle(conn Conn) error {
 		return err
 	}
 
-	_, err = mbox.Select(nil)
+	var extOpts []backend.ExtensionOption
+	if len(cmd.QresyncParams) >= 2 {
+		uidValidity, _ := imap.ParseNumber(cmd.QresyncParams[0])
+		lastModseq, _ := imap.ParseNumber64bit(cmd.QresyncParams[1])
+		qresyncSelect := &backend.QresyncSelect{
+			UIDValidity: uidValidity,
+			LastModseq:  lastModseq,
+		}
+		if len(cmd.QresyncParams) >= 3 {
+			uidSet, _ := imap.ParseSeqSet(cmd.QresyncParams[2])
+			qresyncSelect.UIDSet = uidSet
+		}
+		if len(cmd.QresyncParams) >= 5 {
+			seqSetPair, _ := imap.ParseSeqSet(cmd.QresyncParams[3])
+			uidSetPair, _ := imap.ParseSeqSet(cmd.QresyncParams[4])
+			qresyncSelect.SeqSetPair = seqSetPair
+			qresyncSelect.UIDSetPair = uidSetPair
+		}
+		extOpts = append(extOpts, qresyncSelect)
+	}
+	if cmd.EnableCondstore {
+		extOpts = append(extOpts, &backend.CondstoreSelect{Condstore: true})
+	}
+
+	_, err = mbox.Select(extOpts)
 	if err != nil {
 		return err
 	}
 
 	items := []imap.StatusItem{
 		imap.StatusMessages, imap.StatusRecent, imap.StatusUnseen,
-		imap.StatusUidNext, imap.StatusUidValidity,
+		imap.StatusUidNext, imap.StatusUidValidity, imap.StatusHighestModseq,
 	}
 
-	status, _, err := mbox.Status(items, nil)
+	status, extReses, err := mbox.Status(items, extOpts)
 	if err != nil {
 		return err
 	}
@@ -61,8 +86,21 @@ func (cmd *Select) Handle(conn Conn) error {
 	ctx.MailboxReadOnly = cmd.ReadOnly || status.ReadOnly
 
 	res := &responses.Select{Mailbox: status}
-	if err := conn.WriteResp(res); err != nil {
+	if err = conn.WriteResp(res); err != nil {
 		return err
+	}
+
+	for _, extRes := range extReses {
+		switch extRes := extRes.(type) {
+		case *backend.QresyncVanished:
+			if err = conn.WriteResp(extRes); err != nil {
+				return err
+			}
+		case *backend.QresyncMessages:
+			if err = conn.WriteResp(extRes); err != nil {
+				return err
+			}
+		}
 	}
 
 	var code imap.StatusRespCode = imap.CodeReadWrite
@@ -73,6 +111,25 @@ func (cmd *Select) Handle(conn Conn) error {
 		Type: imap.StatusRespOk,
 		Code: code,
 	})
+}
+
+type Unselect struct {
+	commands.Unselect
+}
+
+func (cmd *Unselect) Handle(conn Conn) error {
+	ctx := conn.Context()
+	if ctx.Mailbox == nil {
+		return ErrNoMailboxSelected
+	}
+
+	if ctx.User == nil {
+		return ErrNotAuthenticated
+	}
+
+	ctx.Mailbox = nil
+	ctx.MailboxReadOnly = false
+	return ctx.User.Unselect()
 }
 
 type Create struct {
@@ -161,7 +218,18 @@ func (cmd *List) Handle(conn Conn) error {
 	}
 
 	ch := make(chan *imap.MailboxInfo)
-	res := &responses.List{Mailboxes: ch, Subscribed: cmd.Subscribed}
+
+	respXGuid := false
+	if returnStatus, ok := cmd.Return["STATUS"]; ok {
+		for _, returnField := range returnStatus {
+			fieldName, _ := imap.ParseString(returnField)
+			if strings.ToUpper(fieldName) == "X-GUID" {
+				respXGuid = true
+				break
+			}
+		}
+	}
+	res := &responses.List{Mailboxes: ch, Subscribed: cmd.Subscribed, XGuid: respXGuid}
 
 	done := make(chan error, 1)
 	go (func() {

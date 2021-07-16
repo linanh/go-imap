@@ -50,3 +50,16 @@ func (cmd *Logout) Handle(conn Conn) error {
 	conn.Context().State = imap.LogoutState
 	return nil
 }
+
+type Enable struct {
+	commands.Enable
+}
+
+func (cmd *Enable) Handle(conn Conn) error {
+	ctx := conn.Context()
+	if ctx.User == nil {
+		return ErrNotAuthenticated
+	}
+
+	return ctx.User.Enable(cmd.Qresync, cmd.Condstore)
+}

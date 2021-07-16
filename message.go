@@ -175,6 +175,8 @@ type Message struct {
 	Size uint32
 	// The message unique identifier. It must be greater than or equal to 1.
 	Uid uint32
+	//RFC 7162 MODSEQ
+	Modseq uint64
 	// The message body sections.
 	Body map[*BodySectionName]Literal
 
@@ -260,6 +262,14 @@ func (m *Message) Parse(fields []interface{}) error {
 				m.Size, _ = ParseNumber(f)
 			case FetchUid:
 				m.Uid, _ = ParseNumber(f)
+			case FetchModseq:
+				modseqs, ok := f.([]interface{})
+				if !ok {
+					return fmt.Errorf("cannot parse message: MODSEQ is not a list, but a %T", f)
+				}
+				if len(modseqs) > 0 {
+					m.Modseq, _ = ParseNumber64bit(modseqs[0])
+				}
 			default:
 				// Likely to be a section of the body
 				// First check that the section name is correct
@@ -299,6 +309,8 @@ func (m *Message) formatItem(k FetchItem) []interface{} {
 		v = m.Size
 	case FetchUid:
 		v = m.Uid
+	case FetchModseq:
+		v = []interface{}{RawString(strconv.Itoa(int(m.Modseq)))}
 	default:
 		for section, literal := range m.Body {
 			if section.value == k {

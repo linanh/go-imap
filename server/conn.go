@@ -177,12 +177,18 @@ func (c *conn) Capabilities() []string {
 				caps = append(caps, "AUTH="+name)
 			}
 		}
-	}
-
-	for _, ext := range c.Server().Backend.SupportedExtensions() {
-		switch ext {
-		case "UIDPLUS":
-			caps = append(caps, "UIDPLUS")
+	} else {
+		for _, ext := range c.Server().Backend.SupportedExtensions() {
+			switch ext {
+			case "UIDPLUS":
+				caps = append(caps, "UIDPLUS")
+			case "CONDSTORE":
+				caps = append(caps, "CONDSTORE")
+			case "QRESYNC":
+				caps = append(caps, "QRESYNC")
+			case "UNSELECT":
+				caps = append(caps, "UNSELECT")
+			}
 		}
 	}
 

@@ -79,6 +79,10 @@ type SearchCriteria struct {
 	Larger  uint32 // Size is larger than this number
 	Smaller uint32 // Size is smaller than this number
 
+	Modseq             uint64 // Modseq equal to or greater than this number
+	ModseqEntryName    string // Modseq name of the metadata item
+	ModseqEntryTypeReq string // Modseq type of metadata item
+
 	Not []*SearchCriteria    // Each criteria doesn't match
 	Or  [][2]*SearchCriteria // Each criteria pair has at least one match of two
 }
@@ -250,6 +254,25 @@ func (c *SearchCriteria) parseField(fields []interface{}, charsetReader func(io.
 		} else {
 			c.WithoutFlags = append(c.WithoutFlags, CanonicalFlag(maybeString(f)))
 		}
+	//RFC 7162 3.1.5 MODSEQ Search Criterion in SEARCH
+	case "MODSEQ":
+		var n uint64
+		if f, fields, err = popSearchField(fields); err != nil {
+			return nil, err
+		} else if n, err = ParseNumber64bit(f); err != nil {
+			if len(fields) > 1 {
+				n, err = ParseNumber64bit(fields[1])
+				if err != nil {
+					return nil, err
+				}
+				c.ModseqEntryName, _ = ParseString(f)
+				c.ModseqEntryTypeReq, _ = ParseString(fields[0])
+				fields = fields[2:]
+			} else {
+				return nil, err
+			}
+		}
+		c.Modseq = n
 	default: // Try to parse a sequence set
 		if c.SeqNum, err = ParseSeqSet(key); err != nil {
 			return nil, err

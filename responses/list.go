@@ -15,6 +15,7 @@ const (
 type List struct {
 	Mailboxes  chan *imap.MailboxInfo
 	Subscribed bool
+	XGuid      bool
 }
 
 func (r *List) Name() string {
@@ -50,6 +51,20 @@ func (r *List) WriteTo(w *imap.Writer) error {
 		resp := imap.NewUntaggedResp(fields)
 		if err := resp.WriteTo(w); err != nil {
 			return err
+		}
+
+		if r.XGuid {
+			resp := imap.NewUntaggedResp([]interface{}{
+				imap.RawString("STATUS"),
+				imap.FormatMailboxName(mbox.Name),
+				[]interface{}{
+					imap.RawString("X-GUID"),
+					imap.RawString(mbox.XGuid),
+				},
+			})
+			if err := resp.WriteTo(w); err != nil {
+				return err
+			}
 		}
 	}
 

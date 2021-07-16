@@ -92,4 +92,8 @@ type User interface {
 
 	//After login, SetExtensionID is called when user send command ID
 	SetExtensionID(map[string]string) error
+
+	Enable(qresync, condstore string) error
+	IsEnableQresync() bool
+	Unselect() error
 }

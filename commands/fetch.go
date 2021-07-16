@@ -9,8 +9,10 @@ import (
 
 // Fetch is a FETCH command, as defined in RFC 3501 section 6.4.5.
 type Fetch struct {
-	SeqSet *imap.SeqSet
-	Items  []imap.FetchItem
+	SeqSet         *imap.SeqSet
+	Items          []imap.FetchItem
+	ChangeSinced   uint64
+	EnableVanished bool
 }
 
 func (cmd *Fetch) Command() *imap.Command {
@@ -49,6 +51,27 @@ func (cmd *Fetch) Parse(fields []interface{}) error {
 		}
 	default:
 		return errors.New("Items must be either a string or a list")
+	}
+
+	//RFC 7162 3.1.4.1 CHANGEDSINCE FETCH Modifier
+	if len(fields) > 2 {
+		switch args := fields[2].(type) {
+		case []interface{}:
+			if len(args) > 1 {
+				changedSinceKey, _ := imap.ParseString(args[0])
+				if strings.ToUpper(changedSinceKey) == "CHANGEDSINCE" {
+					cmd.ChangeSinced, _ = imap.ParseNumber64bit(args[1])
+					//response contains MODSEQ
+					cmd.Items = append(cmd.Items, imap.FetchModseq)
+				}
+			}
+			if len(args) > 2 {
+				vanishedKey, _ := imap.ParseString(args[2])
+				if strings.ToUpper(vanishedKey) == "VANISHED" {
+					cmd.EnableVanished = true
+				}
+			}
+		}
 	}
 
 	return nil

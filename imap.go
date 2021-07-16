@@ -18,6 +18,7 @@ const (
 	StatusUidValidity   StatusItem = "UIDVALIDITY"
 	StatusUnseen        StatusItem = "UNSEEN"
 	StatusHighestModseq StatusItem = "HIGHESTMODSEQ" // From extensions describe in RFC 7162 section 3.1.2.1
+	StatusXGuid         StatusItem = "X-GUID"
 )
 
 // A FetchItem is a message data item that can be fetched.
@@ -41,6 +42,7 @@ const (
 	FetchRFC822Size    FetchItem = "RFC822.SIZE"
 	FetchRFC822Text    FetchItem = "RFC822.TEXT"
 	FetchUid           FetchItem = "UID"
+	FetchModseq        FetchItem = "MODSEQ"
 )
 
 // Expand expands the item if it's a macro.

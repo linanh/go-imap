@@ -191,14 +191,16 @@ func New(bkd backend.Backend) *Server {
 		"STATUS": func() Handler { return &Status{} },
 		"APPEND": func() Handler { return &Append{} },
 
-		"CHECK":   func() Handler { return &Check{} },
-		"CLOSE":   func() Handler { return &Close{} },
-		"EXPUNGE": func() Handler { return &Expunge{} },
-		"SEARCH":  func() Handler { return &Search{} },
-		"FETCH":   func() Handler { return &Fetch{} },
-		"STORE":   func() Handler { return &Store{} },
-		"COPY":    func() Handler { return &Copy{} },
-		"UID":     func() Handler { return &Uid{} },
+		"CHECK":    func() Handler { return &Check{} },
+		"CLOSE":    func() Handler { return &Close{} },
+		"EXPUNGE":  func() Handler { return &Expunge{} },
+		"SEARCH":   func() Handler { return &Search{} },
+		"FETCH":    func() Handler { return &Fetch{} },
+		"STORE":    func() Handler { return &Store{} },
+		"COPY":     func() Handler { return &Copy{} },
+		"UID":      func() Handler { return &Uid{} },
+		"ENABLE":   func() Handler { return &Enable{} },
+		"UNSELECT": func() Handler { return &Unselect{} },
 	}
 
 	return s
@@ -366,6 +368,12 @@ func (s *Server) listenUpdates() {
 			}
 			if update.Mailbox() != "" && (ctx.Mailbox == nil || ctx.Mailbox.Name() != update.Mailbox()) {
 				continue
+			}
+			if ctx.User.IsEnableQresync() {
+				// if client enable qresync, skip expunge updates
+				if _, ok := res.(*responses.Expunge); ok {
+					continue
+				}
 			}
 			if *conn.silent() {
 				// If silent is set, do not send message updates

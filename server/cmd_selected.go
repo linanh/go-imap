@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/linanh/go-imap"
 	"github.com/linanh/go-imap/backend"
@@ -80,7 +81,7 @@ func (cmd *Expunge) Handle(conn Conn) error {
 	// Get a list of messages that will be deleted
 	// That will allow us to send expunge updates if the backend doesn't support it
 	var seqnums []uint32
-	if conn.Server().Updates == nil {
+	if conn.Server().Updates == nil && !ctx.User.IsEnableQresync() {
 		criteria := &imap.SearchCriteria{
 			WithFlags: []string{imap.DeletedFlag},
 		}
@@ -90,13 +91,27 @@ func (cmd *Expunge) Handle(conn Conn) error {
 		}
 	}
 
-	_, err = ctx.Mailbox.Expunge(nil)
+	var extReses []backend.ExtensionResult
+	extReses, err = ctx.Mailbox.Expunge(nil)
 	if err != nil {
 		return err
 	}
+	var highestModseq uint64
+	for _, extRes := range extReses {
+		switch extRes := extRes.(type) {
+		case *backend.QresyncVanished:
+			if err = conn.WriteResp(extRes); err != nil {
+				return err
+			}
+		case *backend.HighestModseqResp:
+			if extRes.HighestModseqResp > highestModseq {
+				highestModseq = extRes.HighestModseqResp
+			}
+		}
+	}
 
 	// If the backend doesn't support expunge updates, let's do it ourselves
-	if conn.Server().Updates == nil {
+	if conn.Server().Updates == nil && !ctx.User.IsEnableQresync() {
 		done := make(chan error, 1)
 
 		ch := make(chan uint32)
@@ -123,6 +138,16 @@ func (cmd *Expunge) Handle(conn Conn) error {
 		if err := <-done; err != nil {
 			return err
 		}
+	}
+
+	if highestModseq > 0 {
+		customResp := &imap.StatusResp{
+			Type:      imap.StatusRespOk,
+			Code:      imap.CodeHighestModseq,
+			Arguments: []interface{}{strconv.Itoa(int(highestModseq))},
+			Info:      "expunged",
+		}
+		return &imap.ErrStatusResp{Resp: customResp}
 	}
 
 	return nil
@@ -160,12 +185,19 @@ func (cmd *Search) handle(uid bool, conn Conn) error {
 		return ErrNoMailboxSelected
 	}
 
-	ids, _, err := ctx.Mailbox.SearchMessages(uid, cmd.Criteria, nil)
+	ids, extReses, err := ctx.Mailbox.SearchMessages(uid, cmd.Criteria, nil)
 	if err != nil {
 		return err
 	}
 
 	res := &responses.Search{Ids: ids}
+	for _, extRes := range extReses {
+		switch extRes := extRes.(type) {
+		case *backend.SearchModseqResp:
+			res.Modseq = extRes.Modseq
+		}
+	}
+
 	return conn.WriteResp(res)
 }
 
@@ -198,9 +230,35 @@ func (cmd *Fetch) handle(uid bool, conn Conn) error {
 		}
 	})()
 
-	_, err := ctx.Mailbox.ListMessages(uid, cmd.SeqSet, cmd.Items, ch, nil)
+	var extOpts []backend.ExtensionOption
+	if cmd.ChangeSinced > 0 {
+		extOpts = append(extOpts, &backend.CondstoreFetch{
+			ChangeSinced: cmd.ChangeSinced,
+		})
+	}
+	if cmd.EnableVanished {
+		extOpts = append(extOpts, &backend.QresyncFetch{
+			EnableVanished: true,
+		})
+	}
+	var err error
+	var extReses []backend.ExtensionResult
+	if len(extOpts) > 0 {
+		extReses, err = ctx.Mailbox.ListMessages(uid, cmd.SeqSet, cmd.Items, ch, extOpts)
+	} else {
+		_, err = ctx.Mailbox.ListMessages(uid, cmd.SeqSet, cmd.Items, ch, nil)
+	}
 	if err != nil {
 		return err
+	}
+
+	for _, extRes := range extReses {
+		switch extRes := extRes.(type) {
+		case *backend.QresyncVanished:
+			if err = conn.WriteResp(extRes); err != nil {
+				return err
+			}
+		}
 	}
 
 	return <-done
@@ -270,7 +328,34 @@ func (cmd *Store) handle(uid bool, conn Conn) error {
 	// from receiving them
 	// TODO: find a better way to do this, without conn.silent
 	*conn.silent() = silent
-	_, err = ctx.Mailbox.UpdateMessagesFlags(uid, cmd.SeqSet, op, flags, nil)
+	var extReses []backend.ExtensionResult
+	if cmd.UnchangedSince > 0 {
+		extOpts := []backend.ExtensionOption{
+			&backend.CondstoreStore{
+				UnchangedSince: cmd.UnchangedSince,
+			},
+		}
+		extReses, err = ctx.Mailbox.UpdateMessagesFlags(uid, cmd.SeqSet, op, flags, extOpts)
+	} else {
+		extReses, err = ctx.Mailbox.UpdateMessagesFlags(uid, cmd.SeqSet, op, flags, nil)
+	}
+
+	for _, extRes := range extReses {
+		switch extRes := extRes.(type) {
+		case *backend.HighestModseqResp:
+			if extRes.HighestModseqResp > 0 {
+				if err = conn.WriteResp(extRes); err != nil {
+					return err
+				}
+			}
+		//if modseq > unchangedSince
+		case *backend.QresyncMessages:
+			if err = conn.WriteResp(extRes); err != nil {
+				return err
+			}
+		}
+	}
+
 	*conn.silent() = false
 	if err != nil {
 		return err
@@ -284,6 +369,10 @@ func (cmd *Store) handle(uid bool, conn Conn) error {
 		inner.Items = []imap.FetchItem{imap.FetchFlags}
 		if uid {
 			inner.Items = append(inner.Items, "UID")
+		}
+
+		if cmd.UnchangedSince > 0 {
+			inner.Items = append(inner.Items, imap.FetchModseq)
 		}
 
 		if err := inner.handle(uid, conn); err != nil {

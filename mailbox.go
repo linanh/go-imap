@@ -81,6 +81,8 @@ type MailboxInfo struct {
 	Delimiter string
 	// The mailbox name.
 	Name string
+	// The mailbox guid
+	XGuid string
 }
 
 // Parse mailbox info from fields.
@@ -224,6 +226,7 @@ type MailboxStatus struct {
 	// Highest mod-sequence value of all messages in the mailbox.
 	// See RFC 7162 section 3.1.2.1.
 	HighestModseq uint64
+	XGuid         string
 }
 
 // Create a new mailbox status that will contain the specified items.
@@ -268,6 +271,8 @@ func (status *MailboxStatus) Parse(fields []interface{}) error {
 				status.UidValidity, err = ParseNumber(f)
 			case StatusHighestModseq:
 				status.HighestModseq, err = ParseNumber64bit(f)
+			case StatusXGuid:
+				status.XGuid, err = ParseString(f)
 			default:
 				status.Items[k] = f
 			}
@@ -297,6 +302,8 @@ func (status *MailboxStatus) Format() []interface{} {
 			v = status.UidValidity
 		case StatusHighestModseq:
 			v = status.HighestModseq
+		case StatusXGuid:
+			v = status.XGuid
 		}
 
 		fields = append(fields, RawString(k), v)

@@ -2,6 +2,7 @@ package responses
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/linanh/go-imap"
 )
@@ -134,6 +135,21 @@ func (r *Select) WriteTo(w *imap.Writer) error {
 				Code:      imap.CodeUidValidity,
 				Arguments: []interface{}{mbox.UidValidity},
 				Info:      "UIDs valid",
+			}
+			if err := statusRes.WriteTo(w); err != nil {
+				return err
+			}
+		case imap.StatusHighestModseq:
+			statusRes := &imap.StatusResp{
+				Type:      imap.StatusRespOk,
+				Code:      imap.CodeHighestModseq,
+				Arguments: []interface{}{imap.RawString(strconv.Itoa(int(mbox.HighestModseq)))},
+				Info:      "",
+			}
+			if mbox.HighestModseq == 0 {
+				statusRes.Code = imap.CodeNoModseq
+				statusRes.Arguments = nil
+				statusRes.Info = "Sorry, this mailbox format doesn't support modsequences"
 			}
 			if err := statusRes.WriteTo(w); err != nil {
 				return err

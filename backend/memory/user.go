@@ -84,3 +84,15 @@ func (u *User) SetExtensionID(map[string]string) error {
 func (u *User) Logout() error {
 	return nil
 }
+
+func (u *User) Enable(qresync, condstore string) error {
+	return nil
+}
+
+func (u *User) IsEnableQresync() bool {
+	return false
+}
+
+func (u *User) Unselect() error {
+	return nil
+}
