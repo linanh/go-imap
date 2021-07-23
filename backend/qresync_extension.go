@@ -66,7 +66,7 @@ func (qm *QresyncMessages) WriteTo(w *imap.Writer) error {
 				imap.RawString("UID"),
 				imap.RawString(strconv.Itoa(int(msg.UID))),
 				imap.RawString("MODSEQ"),
-				[]interface{}{strconv.Itoa(int(msg.Modseq))},
+				[]interface{}{imap.RawString(strconv.Itoa(int(msg.Modseq)))},
 				imap.RawString("FLAGS"),
 				flags,
 			},
