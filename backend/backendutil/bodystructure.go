@@ -3,9 +3,10 @@ package backendutil
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"io"
-	"io/ioutil"
 	"mime"
+	"mime/quotedprintable"
 	"strings"
 
 	"github.com/linanh/go-imap"
@@ -55,6 +56,7 @@ func FetchBodyStructure(header textproto.Header, body io.Reader, extended bool) 
 	bs.Id = header.Get("Content-Id")
 	bs.Description = header.Get("Content-Description")
 	bs.Encoding = header.Get("Content-Transfer-Encoding")
+	disposition, dispositionParams, _ := mime.ParseMediaType(header.Get("Content-Disposition"))
 
 	if mr := multipartReader(header, body); mr != nil {
 		var parts []*imap.BodyStructure
@@ -76,9 +78,20 @@ func FetchBodyStructure(header textproto.Header, body io.Reader, extended bool) 
 	} else {
 		countedBody := countReader{r: body}
 		needLines := false
-		if bs.MIMEType == "message" && bs.MIMESubType == "rfc822" {
+		if disposition == "attachment" && bs.MIMEType == "message" && bs.MIMESubType == "rfc822" {
+			bs.MIMEType = "application"
+			bs.MIMESubType = "octet-stream"
+		} else if bs.MIMEType == "message" && bs.MIMESubType == "rfc822" {
 			// This will result in double-buffering if body is already a
 			// bufio.Reader (most likely it is). :\
+			switch strings.ToLower(bs.Encoding) {
+			case "base64":
+				decoder := base64.NewDecoder(base64.StdEncoding, body)
+				countedBody = countReader{r: decoder}
+			case "quoted-printable":
+				decoder := quotedprintable.NewReader(body)
+				countedBody = countReader{r: decoder}
+			}
 			bufBody := bufio.NewReader(&countedBody)
 			subMsgHdr, err := textproto.ReadHeader(bufBody)
 			if err != nil {
@@ -96,7 +109,7 @@ func FetchBodyStructure(header textproto.Header, body io.Reader, extended bool) 
 		} else if bs.MIMEType == "text" {
 			needLines = true
 		}
-		if _, err := io.Copy(ioutil.Discard, &countedBody); err != nil {
+		if _, err := io.Copy(io.Discard, &countedBody); err != nil {
 			return nil, err
 		}
 		bs.Size = countedBody.bytes
@@ -107,7 +120,8 @@ func FetchBodyStructure(header textproto.Header, body io.Reader, extended bool) 
 
 	if extended {
 		bs.Extended = true
-		bs.Disposition, bs.DispositionParams, _ = mime.ParseMediaType(header.Get("Content-Disposition"))
+		bs.Disposition = disposition
+		bs.DispositionParams = dispositionParams
 
 		// TODO: bs.Language, bs.Location
 		// TODO: bs.MD5
