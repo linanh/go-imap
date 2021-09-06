@@ -293,7 +293,11 @@ func (m *Message) formatItem(k FetchItem) []interface{} {
 	switch k {
 	case FetchBody, FetchBodyStructure:
 		// Extension data is only returned with the BODYSTRUCTURE fetch
-		m.BodyStructure.Extended = k == FetchBodyStructure
+		if m.BodyStructure == nil {
+			m.BodyStructure = &BodyStructure{Extended: k == FetchBodyStructure}
+		} else {
+			m.BodyStructure.Extended = k == FetchBodyStructure
+		}
 		v = m.BodyStructure.Format()
 	case FetchEnvelope:
 		v = m.Envelope.Format()

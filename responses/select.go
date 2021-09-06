@@ -144,7 +144,7 @@ func (r *Select) WriteTo(w *imap.Writer) error {
 				Type:      imap.StatusRespOk,
 				Code:      imap.CodeHighestModseq,
 				Arguments: []interface{}{imap.RawString(strconv.Itoa(int(mbox.HighestModseq)))},
-				Info:      "",
+				Info:      "Highest",
 			}
 			if mbox.HighestModseq == 0 {
 				statusRes.Code = imap.CodeNoModseq
