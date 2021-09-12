@@ -325,56 +325,56 @@ func (s *Server) Command(name string) HandlerFactory {
 func (s *Server) listenUpdates() {
 	for {
 		update := <-s.Updates
-
-		var res imap.WriterTo
-		switch update := update.(type) {
-		case *backend.StatusUpdate:
-			res = update.StatusResp
-		case *backend.MailboxUpdate:
-			res = &responses.Select{Mailbox: update.MailboxStatus}
-		case *backend.MailboxInfoUpdate:
-			ch := make(chan *imap.MailboxInfo, 1)
-			ch <- update.MailboxInfo
-			close(ch)
-
-			res = &responses.List{Mailboxes: ch}
-		case *backend.MessageUpdate:
-			ch := make(chan *imap.Message, 1)
-			ch <- update.Message
-			close(ch)
-
-			res = &responses.Fetch{Messages: ch}
-		case *backend.ExpungeUpdate:
-			ch := make(chan uint32, 1)
-			ch <- update.SeqNum
-			close(ch)
-
-			res = &responses.Expunge{SeqNums: ch}
-		default:
-			s.ErrorLog.Printf("unhandled update: %T\n", update)
-		}
-		if res == nil {
-			continue
-		}
-
 		sends := make(chan struct{})
 		wait := 0
 		s.locker.Lock()
+		var res imap.WriterTo
 		for conn := range s.conns {
 			ctx := conn.Context()
-
 			if update.Username() != "" && (ctx.User == nil || ctx.User.Username() != update.Username()) {
 				continue
 			}
 			if update.Mailbox() != "" && (ctx.Mailbox == nil || ctx.Mailbox.Name() != update.Mailbox()) {
 				continue
 			}
-			if ctx.User.IsEnableQresync() {
-				// if client enable qresync, skip expunge updates
-				if _, ok := res.(*responses.Expunge); ok {
-					continue
+
+			switch update := update.(type) {
+			case *backend.StatusUpdate:
+				res = update.StatusResp
+			case *backend.MailboxUpdate:
+				res = &responses.Select{Mailbox: update.MailboxStatus}
+			case *backend.MailboxInfoUpdate:
+				ch := make(chan *imap.MailboxInfo, 1)
+				ch <- update.MailboxInfo
+				close(ch)
+
+				res = &responses.List{Mailboxes: ch}
+			case *backend.MessageUpdate:
+				ch := make(chan *imap.Message, 1)
+				ch <- update.Message
+				close(ch)
+
+				res = &responses.Fetch{Messages: ch}
+			case *backend.ExpungeUpdate:
+				//idling and not enable qresync then send expunge, other command ignore
+				if conn.GetIdling() && !ctx.User.IsEnableQresync() {
+					ch := make(chan uint32, 1)
+					ch <- update.SeqNum
+					close(ch)
+
+					res = &responses.Expunge{SeqNums: ch}
+				} else {
+					res = nil
 				}
+			default:
+				res = nil
+				s.ErrorLog.Printf("unhandled update: %T\n", update)
 			}
+
+			if res == nil {
+				continue
+			}
+
 			if *conn.silent() {
 				// If silent is set, do not send message updates
 				if _, ok := res.(*responses.Fetch); ok {
@@ -383,6 +383,7 @@ func (s *Server) listenUpdates() {
 			}
 
 			conn := conn // Copy conn to a local variable
+			res := res   // Copy res to a local variable
 			go func() {
 				done := make(chan struct{})
 				conn.Context().Responses <- &response{

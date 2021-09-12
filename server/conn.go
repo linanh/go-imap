@@ -37,6 +37,8 @@ type Conn interface {
 	WaitReady()
 
 	Info() *imap.ConnInfo
+	SetIdling(bool)
+	GetIdling() bool
 
 	setTLSConn(*tls.Conn)
 	silent() *bool // TODO: remove this
@@ -72,6 +74,7 @@ type conn struct {
 	responses chan imap.WriterTo
 	loggedOut chan struct{}
 	silentVal bool
+	idling    bool
 }
 
 func newConn(s *Server, c net.Conn) *conn {
@@ -386,6 +389,14 @@ func (c *conn) serve(conn Conn) (err error) {
 func (c *conn) WaitReady() {
 	c.upgrade <- true
 	c.Conn.WaitReady()
+}
+
+func (c *conn) SetIdling(idling bool) {
+	c.idling = idling
+}
+
+func (c *conn) GetIdling() bool {
+	return c.idling
 }
 
 func (c *conn) commandHandler(cmd *imap.Command) (hdlr Handler, err error) {
