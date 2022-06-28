@@ -31,8 +31,8 @@ github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpO
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/linanh/go-message v0.15.1 h1:X9UVuZgcNks3MPSmIjROn4dADbm2AbiQAMZDo3/CLI8=
-github.com/linanh/go-message v0.15.1/go.mod h1:04t5M4Q/1/NLHjshK4wBqywPG4tS4J5HQgp5sPVtyls=
+github.com/linanh/go-message v0.16.0 h1:2IzyyCuCyt59y4gMf85Foysif+J2DYUKSP7y4dFlCHY=
+github.com/linanh/go-message v0.16.0/go.mod h1:04t5M4Q/1/NLHjshK4wBqywPG4tS4J5HQgp5sPVtyls=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.10.1/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v1.7.0/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
