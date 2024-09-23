@@ -40,6 +40,8 @@ type Conn interface {
 	SetIdling(bool)
 	GetIdling() bool
 
+	SetDebug(io.Writer)
+
 	setTLSConn(*tls.Conn)
 	silent() *bool // TODO: remove this
 	serve(Conn) error
@@ -163,6 +165,10 @@ func (c *conn) Close() error {
 	}
 
 	return c.Conn.Close()
+}
+
+func (c *conn) SetDebug(w io.Writer) {
+	c.Conn.SetDebug(w)
 }
 
 func (c *conn) Capabilities() []string {
