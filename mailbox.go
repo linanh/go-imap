@@ -227,6 +227,11 @@ type MailboxStatus struct {
 	// See RFC 7162 section 3.1.2.1.
 	HighestModseq uint64
 	XGuid         string
+
+	// The mailbox attributes.
+	Attributes  []string
+	Delimiter   string
+	ListForRev2 bool
 }
 
 // Create a new mailbox status that will contain the specified items.

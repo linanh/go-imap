@@ -107,6 +107,22 @@ func (r *Select) WriteTo(w *imap.Writer) error {
 		}
 	}
 
+	if mbox.ListForRev2 {
+		mboxInfo := &imap.MailboxInfo{
+			Attributes: mbox.Attributes,
+			Delimiter:  mbox.Delimiter,
+			Name:       mbox.Name,
+			XGuid:      mbox.XGuid,
+		}
+		fields := []interface{}{imap.RawString("LIST")}
+		fields = append(fields, mboxInfo.Format()...)
+
+		resp := imap.NewUntaggedResp(fields)
+		if err := resp.WriteTo(w); err != nil {
+			return err
+		}
+	}
+
 	for k := range r.Mailbox.Items {
 		switch k {
 		case imap.StatusMessages:
