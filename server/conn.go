@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/linanh/go-imap"
@@ -172,7 +173,7 @@ func (c *conn) SetDebug(w io.Writer) {
 }
 
 func (c *conn) Capabilities() []string {
-	caps := []string{"IMAP4rev1", "LITERAL+", "SASL-IR", "CHILDREN"}
+	caps := []string{"IMAP4rev1", "LITERAL+", "SASL-IR", "CHILDREN", "IDLE"}
 
 	if c.ctx.State == imap.NotAuthenticatedState {
 		if !c.IsTLS() && c.s.TLSConfig != nil {
@@ -362,7 +363,42 @@ func (c *conn) serve(conn Conn) (err error) {
 				}
 			} else {
 				var err error
-				res, up, err = c.handleCommand(cmd)
+
+				// IDLE, not use bufio reader for fixing pipelining bug
+				if cmd.Name == "IDLE" {
+					err = c.WriteResp(&imap.ContinuationReq{Info: "idling"})
+					conn.SetIdling(true)
+					up = nil
+					if err == nil {
+						var info string
+						for i := 0; i < 60; i++ {
+							var rerr error
+							info, rerr = c.ReadInfo()
+							if rerr == io.EOF || c.ctx.State == imap.LogoutState {
+								conn.SetIdling(false)
+								return nil
+							}
+							c.setDeadline()
+							info = strings.TrimSpace(strings.Trim(info, "\x00"))
+							if info != "" {
+								break
+							}
+						}
+						if strings.EqualFold(info, "DONE") {
+							res = &imap.StatusResp{
+								Tag:  cmd.Tag,
+								Type: imap.StatusRespOk,
+								Info: cmd.Name + " completed",
+							}
+						} else {
+							err = errors.New("expected DONE")
+						}
+					}
+					conn.SetIdling(false)
+				} else {
+					res, up, err = c.handleCommand(cmd)
+				}
+
 				if err != nil {
 					res = &imap.StatusResp{
 						Tag:  cmd.Tag,
